@@ -1,58 +1,72 @@
-from rest_framework.views import APIView
+from functools import wraps
 
-"""
-Response structure:
-{
-    success: true/false,
-    errors: [],
-    data: {}
-}
-"""
+from rest_framework import status
+from rest_framework.response import Response
 
 
-def custom_response(view):
-    def inner(self, request, *args, **kwargs):
-        response = super(view, self).dispatch(request, args, **kwargs)
-        response_data = response.data
-        data = {
-            "success": True,
-        }
+def api_response(success_message=None, error_message=None):
+    """
+    API response decorator for consistent response format
+    """
 
-        if response.exception:
-            data["success"] = False
-            list_errors = []
-            errors = response_data.get("errors", [])
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(*args, **kwargs):
+            try:
+                result = view_func(*args, **kwargs)
 
-            for e in errors:
-                field = e.get("field")
-                message = e.get("message")
-                try:
-                    if isinstance(message, list):
-                        message_ = message[0]
-                    else:
-                        message_ = message
-                    error_data = {
-                        "field": field,
-                        "message": message_,
-                        "code": message_.code.upper(),
-                    }
-                except Exception:
-                    error_data = {
-                        "field": field,
-                        "message": message,
-                    }
-                list_errors.append(error_data)
+                # If it's already a Response object, return as is
+                if isinstance(result, Response):
+                    return result
 
-            data["errors"] = list_errors
-        else:
-            data["data"] = response_data
+                # If it's a tuple (data, status_code)
+                if isinstance(result, tuple) and len(result) == 2:
+                    data, status_code = result
+                    response_data = {"success": True, "data": data}
+                    if success_message:
+                        response_data["message"] = success_message
+                    return Response(response_data, status=status_code)
 
-        response.data = data
-        return response
+                # If it's just data
+                response_data = {"success": True, "data": result}
+                if success_message:
+                    response_data["message"] = success_message
 
-    assert issubclass(view, APIView), (
-        "class %s must be subclass of APIView" % view.__class__
-    )
+                return Response(response_data, status=status.HTTP_200_OK)
 
-    view.dispatch = inner
-    return view
+            except Exception as e:
+                response_data = {
+                    "success": False,
+                    "error": {"message": error_message or str(e)},
+                }
+                return Response(
+                    response_data, status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return wrapper
+
+    return decorator
+
+
+class APIResponseMixin:
+    """Mixin for consistent API responses"""
+
+    def success_response(
+        self, data=None, message=None, status_code=status.HTTP_200_OK
+    ):
+        """Success response helper"""
+        response_data = {"success": True}
+        if data is not None:
+            response_data["data"] = data
+        if message:
+            response_data["message"] = message
+        return Response(response_data, status=status_code)
+
+    def error_response(
+        self, message, details=None, status_code=status.HTTP_400_BAD_REQUEST
+    ):
+        """Error response helper"""
+        response_data = {"success": False, "error": {"message": message}}
+        if details:
+            response_data["error"]["details"] = details
+        return Response(response_data, status=status_code)

@@ -1,25 +1,44 @@
-from .base import *  # noqa
+from .base import *
+
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-DEBUG = True
-CORS_ALLOW_ALL_ORIGINS = True
 
-SWAGGER_SETTINGS = {
-    "SECURITY_DEFINITIONS": {
-        "[Bearer {JWT}]": {
-            "name": "Authorization",
-            "type": "apiKey",
-            "in": "header",
-        }
-    },
-    "USE_SESSION_AUTH": False,
-    "APIS_SORTER": "alpha",
-    "SUPPORTED_SUBMIT_METHODS": ["get", "post", "put", "delete", "patch"],
-    "OPERATIONS_SORTER": "alpha",
+# Database for development
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
 
-INTERNAL_IPS = ["127.0.0.1"]
+# Email backend for development
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-INSTALLED_APPS += ["debug_toolbar"]  # noqa: F405
+# Disable HTTPS redirect in development
+SECURE_SSL_REDIRECT = False
 
-MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
+# CORS settings for development
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Logging configuration
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

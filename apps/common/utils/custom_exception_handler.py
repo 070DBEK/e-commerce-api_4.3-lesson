@@ -1,32 +1,60 @@
-from common.exceptions import ObjectNotFound
-from rest_framework.exceptions import ErrorDetail
+import logging
+
 from rest_framework.views import exception_handler
+
+logger = logging.getLogger(__name__)
 
 
 def custom_exception_handler(exc, context):
+    """Custom exception handler for DRF"""
+
+    # Call REST framework's default exception handler first
     response = exception_handler(exc, context)
+
     if response is not None:
-        customized_response = {"errors": []}
-        data = response_data_handler(response.data)
-        for key, value in data.items():
-            error = {"field": key, "message": value}
-            customized_response["errors"].append(error)
-        response.data = customized_response
+        custom_response_data = {
+            "success": False,
+            "error": {
+                "message": "Xatolik yuz berdi",
+                "details": response.data,
+            },
+        }
+
+        # Log the error
+        logger.error(f"API Error: {exc}", exc_info=True)
+
+        # Customize error messages based on status code
+        if response.status_code == 400:
+            custom_response_data["error"][
+                "message"
+            ] = "Noto'g'ri ma'lumot yuborildi"
+        elif response.status_code == 401:
+            custom_response_data["error"][
+                "message"
+            ] = "Avtorizatsiya talab qilinadi"
+        elif response.status_code == 403:
+            custom_response_data["error"]["message"] = "Ruxsat berilmagan"
+        elif response.status_code == 404:
+            custom_response_data["error"]["message"] = "Ma'lumot topilmadi"
+        elif response.status_code == 405:
+            custom_response_data["error"][
+                "message"
+            ] = "Metod ruxsat berilmagan"
+        elif response.status_code == 429:
+            custom_response_data["error"][
+                "message"
+            ] = "Juda ko'p so'rov yuborildi"
+        elif response.status_code >= 500:
+            custom_response_data["error"]["message"] = "Server xatosi"
+            # Don't expose internal error details in production
+            if (
+                not hasattr(context.get("request"), "user")
+                or not context["request"].user.is_staff
+            ):
+                custom_response_data["error"][
+                    "details"
+                ] = "Ichki server xatosi"
+
+        response.data = custom_response_data
+
     return response
-
-
-def response_data_handler(data):
-    if isinstance(data, list):
-        data = {"non_field_errors": data}
-
-    detail = data.get("detail", None)
-    if detail is not None:
-        match detail.code.lower():
-            case "not_found":
-                error_detail = ErrorDetail(ObjectNotFound.default_detail)
-                error_detail.code = ObjectNotFound.default_code
-            case _:
-                error_detail = ErrorDetail(detail)
-                error_detail.code = detail.code
-        data = {"non_field_errors": [error_detail]}
-    return data
