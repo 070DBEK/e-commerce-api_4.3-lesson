@@ -348,37 +348,8 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
-### react ###
-.DS_*
-logs
-**/*.backup.*
-**/*.back.*
+### Redis ###
+# Ignore redis binary dump (dump.rdb) files
 
-node_modules
-bower_components
-
-*.sublime*
-
-psd
-thumb
-sketch
-
-### VisualStudioCode ###
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
-
-# Local History for Visual Studio Code
-.history/
-
-# Built Visual Studio Code Extensions
-*.vsix
-
-### VisualStudioCode Patch ###
-# Ignore all local history of files
-.history
-.ionide
+*.rdb
 
